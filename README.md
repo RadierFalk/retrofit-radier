@@ -1,12 +1,12 @@
 # Retrofit Radier
 
-Aplicativo Android que consome a API pública [JSONPlaceholder](https://jsonplaceholder.typicode.com/posts) e exibe uma lista de posts, desenvolvido como exercício da disciplina **Programação para Dispositivos Móveis II** (Faculdade Matias Machline), a partir do material *"Dominando o Retrofit no Android: Consumo de APIs com Jetpack Compose e Flows"*.
+Aplicativo Android que consome a API pública [JSONPlaceholder](https://jsonplaceholder.typicode.com/posts) e exibe uma lista de posts com tela de detalhes e comentários, desenvolvido como exercício da disciplina **Programação para Dispositivos Móveis II** (Faculdade Matias Machline), a partir do material *"Dominando o Retrofit no Android: Consumo de APIs com Jetpack Compose e Flows"*.
 
 ## Screenshots
 
-| Carregando | Lista de posts | Sem internet |
-|:---:|:---:|:---:|
-| <img src="docs/screenshots/loading.png" width="220"> | <img src="docs/screenshots/lista.png" width="220"> | <img src="docs/screenshots/erro.png" width="220"> |
+| Carregando | Lista de posts | Detalhes do post | Sem internet |
+|:---:|:---:|:---:|:---:|
+| <img src="docs/screenshots/loading.png" width="200"> | <img src="docs/screenshots/lista.png" width="200"> | <img src="docs/screenshots/detalhe.png" width="200"> | <img src="docs/screenshots/erro.png" width="200"> |
 
 ## Tecnologias
 
@@ -15,6 +15,7 @@ Aplicativo Android que consome a API pública [JSONPlaceholder](https://jsonplac
 - **Retrofit** 3.0 + **Gson** (conversão de JSON)
 - **Coroutines** e **StateFlow**
 - **ViewModel** (arquitetura MVVM)
+- **Navigation Compose** (navegação entre telas)
 - **Version Catalog** (`gradle/libs.versions.toml`)
 
 ## Estrutura do projeto
@@ -22,12 +23,16 @@ Aplicativo Android que consome a API pública [JSONPlaceholder](https://jsonplac
 ```
 app/src/main/java/com/example/retrofit_radier/
 ├── network/
-│   ├── Post.kt             # Entidade: modelo de dados do JSON
-│   ├── ApiService.kt       # Serviço: endpoints da API (@GET)
-│   └── RetrofitClient.kt   # Instância única (singleton) do Retrofit
-├── PostUiState.kt          # Estados da tela: Loading, Success, Error
-├── PostViewModel.kt        # Busca os dados e expõe o estado via StateFlow
-└── MainActivity.kt         # Telas em Jetpack Compose
+│   ├── Post.kt                # Entidade: modelo de um post
+│   ├── Comment.kt             # Entidade: modelo de um comentário
+│   ├── ApiService.kt          # Serviço: endpoints da API (@GET, @Path)
+│   └── RetrofitClient.kt      # Instância única (singleton) do Retrofit
+├── PostUiState.kt             # Estados da lista: Loading, Success, Error
+├── PostViewModel.kt           # Busca a lista de posts
+├── PostDetailUiState.kt       # Estados da tela de detalhes
+├── PostDetailViewModel.kt     # Busca um post e seus comentários
+├── PostDetailScreen.kt        # Tela de detalhes em Compose
+└── MainActivity.kt            # Navegação (NavHost) e tela da lista
 ```
 
 ## Fluxo dos dados
@@ -53,6 +58,11 @@ Cada etapa foi registrada em um commit separado:
    - `PostUiState` (`sealed interface`) representa os três estados possíveis da tela.
    - Enquanto carrega, aparece um `CircularProgressIndicator`.
    - Em caso de falha, aparece uma mensagem de erro com o botão **Tentar novamente**. Falhas de rede (`IOException`) são tratadas separadamente das demais exceções.
+8. **Tela de detalhes do post**:
+   - Novos endpoints com parâmetro de caminho: `@GET("posts/{id}")` e `@GET("posts/{id}/comments")`, usando `@Path("id")`.
+   - **Navigation Compose**: o `NavHost` tem as rotas `posts` e `detail/{postId}`. Tocar em um card navega para o detalhe; a seta (ou o botão voltar do sistema) retorna à lista.
+   - `PostDetailViewModel` lê o `postId` do `SavedStateHandle` e busca o post e os comentários **em paralelo** com `async`/`await`.
+   - A tela reaproveita os componentes `LoadingScreen` e `ErrorScreen` da lista.
 
 ## Como executar
 

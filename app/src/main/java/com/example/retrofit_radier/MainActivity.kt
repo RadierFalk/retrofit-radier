@@ -19,9 +19,11 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -32,6 +34,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavType
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.example.retrofit_radier.network.Post
 import com.example.retrofit_radier.ui.theme.Retrofit_radierTheme
 
@@ -41,26 +48,47 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             Retrofit_radierTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    PostScreen(modifier = Modifier.padding(innerPadding))
-                }
+                AppNavigation()
             }
         }
     }
 }
 
 @Composable
+fun AppNavigation() {
+    val navController = rememberNavController()
+
+    NavHost(navController = navController, startDestination = "posts") {
+        composable("posts") {
+            PostScreen(onPostClick = { postId -> navController.navigate("detail/$postId") })
+        }
+        composable(
+            route = "detail/{postId}",
+            arguments = listOf(navArgument("postId") { type = NavType.IntType })
+        ) {
+            PostDetailScreen(onBack = { navController.popBackStack() })
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
 fun PostScreen(
-    modifier: Modifier = Modifier,
+    onPostClick: (Int) -> Unit,
     viewModel: PostViewModel = viewModel()
 ) {
     // Coletando o estado do Flow de forma reativa
     val uiState by viewModel.uiState.collectAsState()
 
-    when (val state = uiState) {
-        is PostUiState.Loading -> LoadingScreen(modifier)
-        is PostUiState.Success -> PostList(state.posts, modifier)
-        is PostUiState.Error -> ErrorScreen(state.message, onRetry = viewModel::fetchPosts, modifier)
+    Scaffold(
+        topBar = { TopAppBar(title = { Text("Posts") }) }
+    ) { innerPadding ->
+        val modifier = Modifier.padding(innerPadding)
+        when (val state = uiState) {
+            is PostUiState.Loading -> LoadingScreen(modifier)
+            is PostUiState.Success -> PostList(state.posts, onPostClick, modifier)
+            is PostUiState.Error -> ErrorScreen(state.message, onRetry = viewModel::fetchPosts, modifier)
+        }
     }
 }
 
@@ -93,21 +121,22 @@ fun ErrorScreen(message: String, onRetry: () -> Unit, modifier: Modifier = Modif
 }
 
 @Composable
-fun PostList(posts: List<Post>, modifier: Modifier = Modifier) {
+fun PostList(posts: List<Post>, onPostClick: (Int) -> Unit, modifier: Modifier = Modifier) {
     LazyColumn(
         modifier = modifier.fillMaxSize(),
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         items(posts, key = { it.id }) { post ->
-            PostCard(post)
+            PostCard(post, onClick = { onPostClick(post.id) })
         }
     }
 }
 
 @Composable
-fun PostCard(post: Post) {
+fun PostCard(post: Post, onClick: () -> Unit = {}) {
     Card(
+        onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
